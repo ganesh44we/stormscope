@@ -40,9 +40,10 @@ stormscope/
    - Name: `VITE_MAPBOX_ACCESS_TOKEN`
    - Value: your `pk.` token
 
-4. **Enable GitHub Pages**
-   - Repo → **Settings** → **Pages**
-   - **Build and deployment** → Source: **GitHub Actions**
+4. **Enable GitHub Pages** (if not already on)
+   - Repo → **Settings** → **Pages** → Source: **GitHub Actions**
+
+The site deploys even before the Mapbox secret exists (you’ll see a setup banner). After adding the secret, re-run the deploy workflow so the map loads.
 
 ### View the app
 
