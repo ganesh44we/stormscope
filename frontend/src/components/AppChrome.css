@@ -1,0 +1,44 @@
+.app-chrome {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 1rem;
+  background: linear-gradient(180deg, rgba(15, 17, 23, 0.92) 0%, rgba(15, 17, 23, 0.55) 70%, transparent 100%);
+  color: #e5e7eb;
+  pointer-events: none;
+}
+
+.app-chrome__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.app-chrome__logo {
+  color: #00d4ff;
+  font-size: 1rem;
+}
+
+.app-chrome__title {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  letter-spacing: 0.03em;
+}
+
+.app-chrome__tag {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+}
+
+@media (max-width: 480px) {
+  .app-chrome__tag {
+    display: none;
+  }
+}

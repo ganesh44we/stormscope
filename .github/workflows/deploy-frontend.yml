@@ -29,8 +29,6 @@ jobs:
 
       - name: Install and build
         working-directory: frontend
-        env:
-          VITE_MAPBOX_TOKEN: ${{ secrets.VITE_MAPBOX_TOKEN }}
         run: |
           npm ci
           npm run build

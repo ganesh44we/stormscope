@@ -1,162 +1,98 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import mapboxgl from 'mapbox-gl'
-import * as turf from '@turf/turf'
-import 'mapbox-gl/dist/mapbox-gl.css'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { MapContainer, TileLayer } from 'react-leaflet'
+import type { Map as LeafletMap } from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 
 import './map.css'
+import { AppChrome } from '../components/AppChrome'
 import { useGeolocation } from '../hooks/useGeolocation'
-import { useRadarEngine } from '../hooks/useRadarEngine'
+import { useWeatherRuntime } from '../hooks/useWeatherRuntime'
+import { AtmosphericStatus } from '../overlays/AtmosphericStatus'
+import { GeoStatusBanner } from '../overlays/GeoStatusBanner'
 import { RadarHud } from '../overlays/RadarHud'
 import { RadarLegend } from '../overlays/RadarLegend'
-import { ATMOSPHERIC_RADIUS_KM } from '../types/geolocation'
-
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
+import type { LngLat } from '../types/map'
+import { toLeafletLatLng } from '../types/map'
+import { LocationLayers } from './LocationLayers'
+import { MapBridge } from './MapBridge'
+import { MapControls } from './MapControls'
+import {
+  DEFAULT_CENTER,
+  DEFAULT_ZOOM,
+  OSM_ATTRIBUTION,
+  OSM_TILE_URL,
+  RAINVIEWER_ATTRIBUTION,
+} from './mapConstants'
 
 export default function MapView() {
-  const mapContainer = useRef<HTMLDivElement | null>(null)
-  const mapRef = useRef<mapboxgl.Map | null>(null)
-  const markerRef = useRef<mapboxgl.Marker | null>(null)
-  const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null)
-
+  const [mapInstance, setMapInstance] = useState<LeafletMap | null>(null)
   const [radiusLayersReady, setRadiusLayersReady] = useState(false)
-  const [radarTimestamp, setRadarTimestamp] = useState<number | null>(null)
-  const [radarFrameIndex, setRadarFrameIndex] = useState(0)
-  const [radarFrameCount, setRadarFrameCount] = useState(0)
-  const [radarLoading, setRadarLoading] = useState(false)
 
-  const location = useGeolocation()
-  const center: [number, number] | null = location
-    ? [location.longitude, location.latitude]
-    : null
+  const { position, status: geoStatus, error: geoError } = useGeolocation()
 
-  const handleRadarTimestamp = useCallback(
-    (timestamp: number, frameIndex: number, frameCount: number) => {
-      setRadarLoading(false)
-      setRadarTimestamp(timestamp)
-      setRadarFrameIndex(frameIndex)
-      setRadarFrameCount(frameCount)
-    },
-    [],
-  )
+  const usingFallback = geoStatus === 'denied' || geoStatus === 'unavailable'
 
-  useEffect(() => {
-    if (!mapContainer.current || mapRef.current) return
+  const center: LngLat | null = useMemo(() => {
+    if (position) return [position.longitude, position.latitude]
+    if (usingFallback) return DEFAULT_CENTER
+    return null
+  }, [position, usingFallback])
 
-    const map = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
-      center: [78.4867, 17.385],
-      zoom: 6,
-      projection: 'globe',
-    })
+  const weather = useWeatherRuntime(mapInstance, center, radiusLayersReady)
 
-    map.addControl(new mapboxgl.NavigationControl())
-    mapRef.current = map
+  const handleMapReady = useCallback((map: LeafletMap) => {
     setMapInstance(map)
+  }, [])
 
-    return () => {
-      setRadiusLayersReady(false)
-      setMapInstance(null)
-      markerRef.current?.remove()
-      markerRef.current = null
-      map.remove()
-      mapRef.current = null
-    }
+  const handleMapDestroy = useCallback(() => {
+    setMapInstance(null)
+    setRadiusLayersReady(false)
+  }, [])
+
+  const handleRadiusReady = useCallback(() => {
+    setRadiusLayersReady(true)
   }, [])
 
   useEffect(() => {
-    if (!location || !mapRef.current) return
-
-    const map = mapRef.current
     setRadiusLayersReady(false)
-    setRadarLoading(true)
+  }, [center?.[0], center?.[1]])
 
-    const centerLngLat: [number, number] = [
-      location.longitude,
-      location.latitude,
-    ]
-
-    const applyLocationLayers = () => {
-      map.flyTo({
-        center: centerLngLat,
-        zoom: 7,
-        speed: 1.2,
-      })
-
-      markerRef.current?.remove()
-      markerRef.current = new mapboxgl.Marker({
-        color: '#00d4ff',
-      })
-        .setLngLat(centerLngLat)
-        .addTo(map)
-
-      const circle = turf.circle(centerLngLat, ATMOSPHERIC_RADIUS_KM, {
-        steps: 128,
-        units: 'kilometers',
-      })
-
-      const existing = map.getSource('radius-circle')
-      if (existing && 'setData' in existing) {
-        existing.setData(circle)
-      } else {
-        map.addSource('radius-circle', {
-          type: 'geojson',
-          data: circle,
-        })
-
-        map.addLayer({
-          id: 'radius-fill',
-          type: 'fill',
-          source: 'radius-circle',
-          paint: {
-            'fill-color': '#00d4ff',
-            'fill-opacity': 0.08,
-          },
-        })
-
-        map.addLayer({
-          id: 'radius-outline',
-          type: 'line',
-          source: 'radius-circle',
-          paint: {
-            'line-color': '#00d4ff',
-            'line-width': 2,
-          },
-        })
-      }
-
-      setRadiusLayersReady(true)
-    }
-
-    if (map.isStyleLoaded()) {
-      applyLocationLayers()
-    } else {
-      map.once('load', applyLocationLayers)
-    }
-  }, [location])
-
-  useRadarEngine(mapInstance, center, radiusLayersReady, handleRadarTimestamp)
-
-  if (!import.meta.env.VITE_MAPBOX_TOKEN) {
-    return (
-      <div className="map-setup">
-        <p>
-          Missing Mapbox token. Add <code>VITE_MAPBOX_TOKEN</code> to{' '}
-          <code>frontend/.env</code> (see <code>.env.example</code>).
-        </p>
-      </div>
-    )
-  }
+  const { radar, status, error } = weather
+  const defaultCenter = toLeafletLatLng(DEFAULT_CENTER)
+  const showAnalysisZone = center !== null
 
   return (
     <div className="map-viewport">
-      <div ref={mapContainer} className="map-container" />
-      <RadarHud
-        timestamp={radarTimestamp}
-        frameIndex={radarFrameIndex}
-        frameCount={radarFrameCount}
-        loading={radarLoading && radiusLayersReady}
+      <AppChrome />
+      <GeoStatusBanner
+        status={geoStatus}
+        error={geoError}
+        usingFallback={usingFallback}
       />
+      <MapContainer
+        className="map-container"
+        center={defaultCenter}
+        zoom={DEFAULT_ZOOM}
+        scrollWheelZoom
+        zoomControl
+        attributionControl
+      >
+        <TileLayer url={OSM_TILE_URL} attribution={OSM_ATTRIBUTION} />
+        <MapControls />
+        <MapBridge onMapReady={handleMapReady} onMapDestroy={handleMapDestroy} />
+        {showAnalysisZone && (
+          <LocationLayers center={center} onRadiusReady={handleRadiusReady} />
+        )}
+      </MapContainer>
+      <RadarHud
+        timestamp={radar.activeTimestamp}
+        frameIndex={radar.frameIndex}
+        frameCount={radar.frameCount}
+        loading={status === 'loading' || geoStatus === 'pending'}
+        error={error}
+        attribution={RAINVIEWER_ATTRIBUTION}
+      />
+      <AtmosphericStatus state={weather} />
       <RadarLegend />
     </div>
   )

@@ -6,6 +6,7 @@ type RadarHudProps = {
   frameCount: number
   loading?: boolean
   error?: string | null
+  attribution?: string
 }
 
 function formatRadarTime(unixSeconds: number): string {
@@ -22,11 +23,12 @@ export function RadarHud({
   frameCount,
   loading,
   error,
+  attribution,
 }: RadarHudProps) {
   return (
     <div className="radar-hud" aria-live="polite">
       <span className="radar-hud__label">Live radar</span>
-      {loading && <span className="radar-hud__meta">Loading frames…</span>}
+      {loading && <span className="radar-hud__meta">Syncing atmospheric frames…</span>}
       {error && <span className="radar-hud__error">{error}</span>}
       {!loading && !error && timestamp !== null && (
         <>
@@ -38,6 +40,7 @@ export function RadarHud({
           </span>
         </>
       )}
+      {attribution && <span className="radar-hud__credit">{attribution}</span>}
     </div>
   )
 }

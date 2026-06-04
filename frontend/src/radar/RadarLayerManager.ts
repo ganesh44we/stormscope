@@ -1,84 +1,84 @@
 import * as turf from '@turf/turf'
-import type { Map as MapboxMap } from 'mapbox-gl'
+import L from 'leaflet'
 import type { RadarFrame } from '../services/radar/radarTypes'
+import type { LngLat } from '../types/map'
+import { toLeafletLatLng } from '../types/map'
 import { ATMOSPHERIC_RADIUS_KM } from '../types/geolocation'
 
-export const RADAR_SOURCE_ID = 'stormscope-radar-source'
 export const RADAR_LAYER_ID = 'stormscope-radar-layer'
+export const RADAR_PANE_NAME = 'stormscope-radar-pane'
 
 /**
- * Mapbox source/layer lifecycle for radar raster tiles.
+ * Leaflet tile layer lifecycle for RainViewer radar frames.
  */
 export class RadarLayerManager {
   private attached = false
-  private readonly map: MapboxMap
+  private layer: L.TileLayer | null = null
+  private readonly map: L.Map
 
-  constructor(map: MapboxMap) {
+  constructor(map: L.Map) {
     this.map = map
+    this.ensureRadarPane()
+  }
+
+  private ensureRadarPane(): void {
+    if (this.map.getPane(RADAR_PANE_NAME)) return
+    const pane = this.map.createPane(RADAR_PANE_NAME)
+    pane.style.zIndex = '450'
+    pane.style.pointerEvents = 'none'
   }
 
   get layerId(): string {
     return RADAR_LAYER_ID
   }
 
-  attach(frame: RadarFrame, paint: Record<string, unknown>): void {
-    if (this.attached) {
+  attach(frame: RadarFrame, opacity: number): void {
+    if (this.attached && this.layer) {
       this.setFrame(frame)
+      this.layer.setOpacity(opacity)
       return
     }
 
-    this.map.addSource(RADAR_SOURCE_ID, {
-      type: 'raster',
-      tiles: [frame.tileUrlTemplate],
+    this.layer = L.tileLayer(frame.tileUrlTemplate, {
+      opacity,
+      maxZoom: 12,
       tileSize: 256,
-      minzoom: 0,
-      maxzoom: 12,
+      pane: RADAR_PANE_NAME,
+      crossOrigin: 'anonymous',
     })
-
-    const beforeId = this.map.getLayer('radius-outline')
-      ? 'radius-outline'
-      : undefined
-
-    this.map.addLayer(
-      {
-        id: RADAR_LAYER_ID,
-        type: 'raster',
-        source: RADAR_SOURCE_ID,
-        paint,
-      },
-      beforeId,
-    )
-
+    this.layer.addTo(this.map)
     this.attached = true
   }
 
   setFrame(frame: RadarFrame): void {
-    const source = this.map.getSource(RADAR_SOURCE_ID)
-    if (source && 'setTiles' in source && typeof source.setTiles === 'function') {
-      source.setTiles([frame.tileUrlTemplate])
-    }
+    if (!this.layer) return
+    this.layer.setUrl(frame.tileUrlTemplate)
+  }
+
+  setOpacity(opacity: number): void {
+    this.layer?.setOpacity(opacity)
   }
 
   /** Constrain panning to the atmospheric analysis zone. */
-  setAnalysisBounds(center: [number, number], radiusKm = ATMOSPHERIC_RADIUS_KM): void {
+  setAnalysisBounds(center: LngLat, radiusKm = ATMOSPHERIC_RADIUS_KM): void {
     const circle = turf.circle(center, radiusKm, {
       steps: 64,
       units: 'kilometers',
     })
     const bbox = turf.bbox(circle)
-    this.map.setMaxBounds([
-      [bbox[0], bbox[1]],
-      [bbox[2], bbox[3]],
-    ])
+    const bounds = L.latLngBounds(
+      toLeafletLatLng([bbox[0], bbox[1]]),
+      toLeafletLatLng([bbox[2], bbox[3]]),
+    )
+    this.map.setMaxBounds(bounds)
   }
 
   destroy(): void {
-    if (this.map.getLayer(RADAR_LAYER_ID)) {
-      this.map.removeLayer(RADAR_LAYER_ID)
+    if (this.layer) {
+      this.map.removeLayer(this.layer)
+      this.layer = null
     }
-    if (this.map.getSource(RADAR_SOURCE_ID)) {
-      this.map.removeSource(RADAR_SOURCE_ID)
-    }
+    this.map.setMaxBounds(false as unknown as L.LatLngBoundsExpression)
     this.attached = false
   }
 }

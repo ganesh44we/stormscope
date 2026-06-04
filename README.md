@@ -6,7 +6,8 @@ Real-time atmospheric visualization platform — rain radar, storm intelligence,
 
 | Layer | Choice |
 | --- | --- |
-| Frontend | React, TypeScript, Vite, Mapbox GL JS |
+| Frontend | React, TypeScript, Vite, **Leaflet**, **React-Leaflet**, **OpenStreetMap** |
+| Radar tiles | RainViewer (free public API) |
 | Backend | FastAPI (Phase 2+) |
 | Real-time | WebSockets |
 | Cache | Redis |
@@ -17,7 +18,7 @@ Real-time atmospheric visualization platform — rain radar, storm intelligence,
 
 ```text
 stormscope/
-├── frontend/     # stormscope-frontend (React + Mapbox)
+├── frontend/     # Leaflet + OSM + weather runtime
 ├── backend/      # FastAPI (later)
 ├── infra/        # Docker, Terraform, AWS (later)
 └── extension/    # Chrome MV3 (later)
@@ -28,31 +29,19 @@ stormscope/
 ```bash
 cd frontend
 npm install
-cp .env.example .env
-```
-
-Add your Mapbox public token to `frontend/.env`:
-
-```env
-VITE_MAPBOX_TOKEN=pk.your_token_here
-```
-
-```bash
 npm run dev
 ```
 
-Expected: fullscreen dark map centered on Hyderabad, globe projection, navigation controls.
+No Mapbox token or `.env` file needed. Open http://localhost:5173 and allow browser location.
 
-## Frontend — GitHub Pages (no local dev)
+## Frontend — GitHub Pages
 
 **Live:** https://ganesh44we.github.io/stormscope/
 
-1. Repo secret **`VITE_MAPBOX_TOKEN`** → [Actions secrets](https://github.com/ganesh44we/stormscope/settings/secrets/actions)
-2. Mapbox token URL restriction: `https://*.github.io/*`
-3. Re-run **Deploy frontend (GitHub Pages)** workflow after adding the secret
+Pushes to `main` deploy automatically via GitHub Actions (no secrets required for the map).
 
 ## Roadmap
 
-1. **Core visualization** — radar overlay, animation, 200km radius, legend
-2. **Real-time intelligence** — WebSockets, alerts, caching
+1. **Core visualization** — radar overlay, animation, 200km radius, legend ✓
+2. **Real-time intelligence** — WebSockets, alerts, backend caching
 3. **Production infra** — CDN, Docker, AWS, observability

@@ -1,6 +1,6 @@
 .radar-hud {
   position: absolute;
-  top: 1rem;
+  top: 3.5rem;
   left: 1rem;
   z-index: 2;
   display: flex;
@@ -36,4 +36,10 @@
 
 .radar-hud__error {
   color: #fca5a5;
+}
+
+.radar-hud__credit {
+  margin-top: 0.35rem;
+  font-size: 0.625rem;
+  color: #6b7280;
 }

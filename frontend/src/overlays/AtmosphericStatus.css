@@ -1,0 +1,38 @@
+.atmospheric-status {
+  position: absolute;
+  top: 3.5rem;
+  right: 1rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  pointer-events: none;
+}
+
+.atmospheric-status__chip {
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(15, 17, 23, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #d1d5db;
+}
+
+.atmospheric-status__chip[data-level='heavy'],
+.atmospheric-status__chip[data-level='extreme'] {
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+}
+
+.atmospheric-status__chip[data-storm='severe'] {
+  border-color: rgba(168, 85, 247, 0.5);
+  color: #e9d5ff;
+}
+
+.atmospheric-status__chip[data-storm='active'] {
+  border-color: rgba(234, 179, 8, 0.5);
+  color: #fde047;
+}

@@ -1,6 +1,6 @@
-import type { Map as MapboxMap } from 'mapbox-gl'
-import { fetchRadarTimeline } from '../services/radar/radarApi'
-import type { RadarFrame } from '../services/radar/radarTypes'
+import type { Map as LeafletMap } from 'leaflet'
+import type { RadarFrame, RadarTimeline } from '../services/radar/radarTypes'
+import type { LngLat } from '../types/map'
 import { RadarAnimator } from './RadarAnimator'
 import { RadarFrameController } from './RadarFrameController'
 import { RadarLayerManager } from './RadarLayerManager'
@@ -13,57 +13,78 @@ export type RadarTimestampCallback = (
 ) => void
 
 /**
- * Orchestrates metadata fetch → frame control → layer updates → animation loop.
- * Keeps rendering logic outside React components.
+ * Leaflet radar rendering — driven by WeatherEngine (no direct API calls).
  */
 export class RadarEngine {
-  private readonly map: MapboxMap
+  private readonly map: LeafletMap
   private readonly layerManager: RadarLayerManager
   private readonly frameController = new RadarFrameController()
   private readonly animator = new RadarAnimator()
   private readonly opacityEngine = new RadarOpacityEngine()
   private stopped = false
+  private bootstrapped = false
   private onTimestamp: RadarTimestampCallback | null = null
+  private center: LngLat | null = null
 
-  constructor(map: MapboxMap) {
+  constructor(map: LeafletMap) {
     this.map = map
     this.layerManager = new RadarLayerManager(map)
   }
 
   async start(
-    center: [number, number],
+    center: LngLat,
+    timeline: RadarTimeline,
     onTimestamp?: RadarTimestampCallback,
   ): Promise<void> {
     this.stopped = false
+    this.center = center
     this.onTimestamp = onTimestamp ?? null
+    this.frameController.setTimeline(timeline)
 
-    try {
-      const timeline = await fetchRadarTimeline()
-      if (this.stopped) return
+    const initial = this.frameController.current
+    if (!initial) return
 
-      this.frameController.setTimeline(timeline)
-      const initial = this.frameController.current
-      if (!initial) return
+    this.whenMapReady(() => this.bootstrap(center, initial))
+  }
 
-      const run = () => this.bootstrap(center, initial)
-      if (this.map.isStyleLoaded()) {
-        run()
-      } else {
-        this.map.once('load', run)
+  /** Hot-swap timeline without tearing down the Leaflet layer. */
+  refreshTimeline(
+    timeline: RadarTimeline,
+    onTimestamp?: RadarTimestampCallback,
+  ): void {
+    if (this.stopped) return
+    if (onTimestamp) this.onTimestamp = onTimestamp
+
+    this.frameController.setTimeline(timeline)
+    const frame = this.frameController.current
+    if (!frame) return
+
+    if (this.bootstrapped) {
+      this.layerManager.setFrame(frame)
+      this.emitTimestamp(frame, this.frameController.currentIndex)
+      if (!this.animator.running) {
+        this.startAnimationLoop()
       }
-    } catch (err) {
-      console.error('[RadarEngine] Failed to start:', err)
+    } else if (this.center) {
+      this.whenMapReady(() => this.bootstrap(this.center!, frame))
     }
   }
 
-  private bootstrap(center: [number, number], initial: RadarFrame): void {
+  private whenMapReady(run: () => void): void {
+    this.map.whenReady(run)
+  }
+
+  private bootstrap(center: LngLat, initial: RadarFrame): void {
     if (this.stopped) return
 
     this.layerManager.setAnalysisBounds(center)
-    this.layerManager.attach(initial, this.opacityEngine.getPaintProperties())
-    this.opacityEngine.apply(this.map, this.layerManager.layerId)
+    this.layerManager.attach(initial, this.opacityEngine.getOpacity())
+    this.bootstrapped = true
     this.emitTimestamp(initial, this.frameController.currentIndex)
+    this.startAnimationLoop()
+  }
 
+  private startAnimationLoop(): void {
     this.animator.start(() => {
       const frame = this.frameController.advance()
       if (!frame || this.stopped) return
@@ -82,8 +103,10 @@ export class RadarEngine {
 
   stop(): void {
     this.stopped = true
+    this.bootstrapped = false
     this.animator.stop()
     this.layerManager.destroy()
     this.onTimestamp = null
+    this.center = null
   }
 }

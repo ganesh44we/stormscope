@@ -1,15 +1,11 @@
-# Production static image (nginx). Build token at image build time — use CI/CD secrets.
-# Example: docker build -f infra/docker/frontend.Dockerfile --build-arg VITE_MAPBOX_ACCESS_TOKEN=pk.xxx -t stormscope-frontend .
+# Production static image (nginx). No API keys required for OSM basemap.
+# Example: docker build -f infra/docker/frontend.Dockerfile -t stormscope-frontend .
 
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ .
-ARG VITE_MAPBOX_ACCESS_TOKEN
-ARG VITE_BASE_PATH=/
-ENV VITE_MAPBOX_ACCESS_TOKEN=$VITE_MAPBOX_ACCESS_TOKEN
-ENV VITE_BASE_PATH=$VITE_BASE_PATH
 RUN npm run build
 
 FROM nginx:1.27-alpine
