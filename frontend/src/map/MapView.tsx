@@ -1,81 +1,42 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import './map.css'
 
-import { createMapOptions, getMapboxToken } from './mapConfig'
-import './MapView.css'
+const token = import.meta.env.VITE_MAPBOX_TOKEN
+if (token) {
+  mapboxgl.accessToken = token
+}
 
-export function MapView() {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const mapRef = useRef<mapboxgl.Map | null>(null)
-  const [mapError, setMapError] = useState<string | null>(null)
-
-  const token = getMapboxToken()
+export default function MapView() {
+  const mapContainer = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    if (!token) {
-      setMapError(
-        'Missing Mapbox token. Add GitHub Actions secret VITE_MAPBOX_ACCESS_TOKEN (public pk. token), then re-run the deploy workflow.',
-      )
-      return
-    }
+    if (!mapContainer.current || !token) return
 
-    const container = containerRef.current
-    if (!container || mapRef.current) return
-
-    mapboxgl.accessToken = token
-
-    let map: mapboxgl.Map
-    try {
-      map = new mapboxgl.Map(createMapOptions(container))
-    } catch (err) {
-      setMapError(
-        err instanceof Error ? err.message : 'Failed to initialize Mapbox GL.',
-      )
-      return
-    }
-
-    mapRef.current = map
-    setMapError(null)
-
-    map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'top-right')
-    map.addControl(
-      new mapboxgl.GeolocateControl({
-        positionOptions: { enableHighAccuracy: true },
-        trackUserLocation: true,
-        showUserHeading: true,
-      }),
-      'top-right',
-    )
-    map.addControl(new mapboxgl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left')
-
-    map.on('load', () => {
-      map.resize()
+    const map = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [78.4867, 17.385],
+      zoom: 7,
+      projection: 'globe',
     })
 
-    return () => {
-      map.remove()
-      mapRef.current = null
-    }
-  }, [token])
+    map.addControl(new mapboxgl.NavigationControl())
 
-  return (
-    <div className="map-view" data-testid="map-view">
-      <div ref={containerRef} className="map-view__canvas" role="application" aria-label="Stormscope weather map" />
-      {mapError && (
-        <div className="map-view__banner" role="alert">
-          <p>{mapError}</p>
-          <p>
-            <a
-              href="https://account.mapbox.com/access-tokens/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Create a Mapbox access token
-            </a>
-          </p>
-        </div>
-      )}
-    </div>
-  )
+    return () => map.remove()
+  }, [])
+
+  if (!token) {
+    return (
+      <div className="map-setup">
+        <p>
+          Missing Mapbox token. Add <code>VITE_MAPBOX_TOKEN</code> to{' '}
+          <code>frontend/.env</code> (see <code>.env.example</code>).
+        </p>
+      </div>
+    )
+  }
+
+  return <div ref={mapContainer} className="map-container" />
 }

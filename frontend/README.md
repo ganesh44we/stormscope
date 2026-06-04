@@ -1,39 +1,42 @@
-# Stormscope Frontend
+# StormScope Frontend
 
-React + TypeScript + Vite + Mapbox GL JS.
+React + TypeScript + Vite + Mapbox GL — fullscreen interactive map foundation.
 
-## How you run this (cloud-first)
+## Setup
 
-This project is meant to be **built in CI and opened on GitHub Pages**, not via `npm run dev` on your laptop.
-
-See the root [README](../README.md):
-
-1. Add GitHub secret `VITE_MAPBOX_ACCESS_TOKEN`
-2. Enable Pages (GitHub Actions source)
-3. Push `main` → open `https://<user>.github.io/<repo>/`
+```bash
+cd frontend
+npm install
+cp .env.example .env
+# Set VITE_MAPBOX_TOKEN in .env (Mapbox public pk. token)
+npm run dev
+```
 
 ## Source layout
 
 ```text
 src/
-├── components/   # App shell, shared UI
-├── map/          # Mapbox map + config
+├── components/   # Shared UI
+├── hooks/        # React hooks
+├── map/          # Mapbox map (MapView, map.css)
 ├── overlays/     # Weather layers (Phase 1+)
 ├── radar/        # RainViewer integration (Phase 1+)
-└── websocket/    # Live updates (Phase 2+)
+├── services/     # API / data clients
+└── types/        # Shared TypeScript types
 ```
 
-## Scripts (CI / maintainers)
+## Environment
+
+| Variable | Description |
+| --- | --- |
+| `VITE_MAPBOX_TOKEN` | Mapbox public token (`pk.*`) — never commit `.env` |
+
+For GitHub Pages, set repo secret **`VITE_MAPBOX_TOKEN`** (same name) and re-run the deploy workflow.
+
+## Scripts
 
 | Command | Description |
 | --- | --- |
-| `npm run build` | Production build (used by GitHub Actions) |
-| `npm run dev` | Optional local HMR — not the default workflow |
-| `npm run preview` | Serve `dist/` after a build |
-
-## Build env vars
-
-| Variable | Required | Notes |
-| --- | --- | --- |
-| `VITE_MAPBOX_ACCESS_TOKEN` | Yes | Injected in GitHub Actions from repo secret |
-| `VITE_BASE_PATH` | Pages only | CI sets `/<repo-name>/`; use `/` for root-hosted deploys |
+| `npm run dev` | Dev server with HMR |
+| `npm run build` | Production build |
+| `npm run preview` | Preview production build |
