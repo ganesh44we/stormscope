@@ -1,0 +1,45 @@
+.radar-legend {
+  position: absolute;
+  bottom: 1.5rem;
+  right: 1rem;
+  z-index: 2;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: rgba(15, 17, 23, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+  font-size: 0.75rem;
+  pointer-events: none;
+}
+
+.radar-legend__title {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.6875rem;
+  color: #9ca3af;
+}
+
+.radar-legend__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.radar-legend__list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.radar-legend__swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}

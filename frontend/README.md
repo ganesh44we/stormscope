@@ -17,13 +17,24 @@ npm run dev
 ```text
 src/
 ├── components/   # Shared UI
-├── hooks/        # React hooks
-├── map/          # Mapbox map (MapView, map.css)
-├── overlays/     # Weather layers (Phase 1+)
-├── radar/        # RainViewer integration (Phase 1+)
-├── services/     # API / data clients
+├── hooks/        # useGeolocation, useRadarEngine
+├── map/          # MapView + map.css
+├── overlays/     # RadarHud, RadarLegend
+├── radar/        # Layer manager, animator, frame controller, engine
+├── services/
+│   └── radar/    # RainViewer API, parser, types
 └── types/        # Shared TypeScript types
 ```
+
+## Radar pipeline (Step 3)
+
+```text
+RainViewer API → radarApi → radarParser → RadarEngine
+  → RadarLayerManager (Mapbox raster tiles)
+  → RadarAnimator (frame loop, outside React)
+```
+
+Animated precipitation uses RainViewer TMN color scheme (intensity greens → purple). Playback respects the 200km analysis `maxBounds`.
 
 ## Environment
 
